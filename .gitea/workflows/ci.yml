@@ -33,6 +33,15 @@ jobs:
         steps:
             - uses: actions/checkout@v7
 
+            # setup-emacs installs Emacs through Nix, which reads github.com's
+            # API; unauthenticated, every runner on the LAN shares one rate
+            # limit. Installing Nix first with a github.com token lifts it, and
+            # setup-emacs then uses that Nix. The token is the organization's
+            # read-only github.com token, shared with Renovate.
+            - uses: cachix/install-nix-action@v31
+              with:
+                  github_access_token: ${{ secrets.RENOVATE_GITHUB_COM_TOKEN }}
+
             - uses: purcell/setup-emacs@master
               with:
                   version: ${{ matrix.emacs }}
