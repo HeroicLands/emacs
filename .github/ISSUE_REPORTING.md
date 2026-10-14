@@ -11,7 +11,7 @@ The core discipline is simple — three axes, each answering a different questio
 
 - **Type** — _"what shape of work is this?"_ One per issue, from a closed set of five.
 - **Priority** — _"how soon and how badly does this need doing?"_ A GitHub issue field, one value, defaults to Medium.
-- **Labels** — _"what is this about?"_ Categorization only, chosen **only** from the registry in §3. Never invent a label.
+- **Labels** — _"what is this about?"_ Categorization only, chosen **only** from the organization set in §3. Never invent a label.
 
 Type and priority are structured single values (one each). Labels stack. Keep the
 roles separate: do not encode priority or work-shape as a label, and do not encode
@@ -44,7 +44,7 @@ project. They are not redefined here.
 - An **epic** MUST link its sub-issues and SHOULD carry little implementation
   detail of its own.
 - A **spike** MUST state the question it answers and its timebox.
-- A **refactor** changing no external behaviour is a **task**, tagged `tech-debt`.
+- A **refactor** changing no external behaviour is a **task**, tagged `flag/tech-debt`.
 
 **What "broken" means here.** This package's behaviour is largely _conditional_ —
 a mode that activates in the right buffers, a completion that offers the right
@@ -71,28 +71,35 @@ Medium · Low**.
 the trigger. This package writes into notes — normalization rewrites a link in
 place — and a wrong rewrite is not an inconvenience.
 
-## 3. Labels — the closed registry
+## 3. Labels — organization-level
 
-Labels are **subject matter only**. The registry is `.github/labels.yml`, and it
-is **closed**: a label not listed there is deleted from the repository, and from
-every issue carrying it, on the next sync. Editing the registry means editing
-both that file and this table.
+Labels are defined once for the whole organization, in `labels.yml` of
+`HeroicLands/.github`. This repository keeps no registry of its own and never
+creates a label here; a gap in the set is raised in `HeroicLands/.github`.
 
-| Label             | Use it for                                                                   |
-| ----------------- | ---------------------------------------------------------------------------- |
-| `documentation`   | The README, the Info manual, docstrings, process.                            |
-| `devops`          | Build, tooling, CI, release, repo config.                                    |
-| `security`        | Evaluating untrusted content, file-local variables, subprocess handling.     |
-| `tech-debt`       | Restructuring or cleanup of working code; refactors.                         |
-| `regression`      | Something that previously worked and stopped. Pairs with type **bug**.       |
-| `breaking-change` | Alters a command name, key binding, variable, or the mode's activation rule. |
-| `blocked`         | Cannot proceed until an external dependency or another issue clears.         |
-| `duplicate`       | Already exists.                                                              |
-| `question`        | Further information is requested.                                            |
-| `wontfix`         | Will not be worked on.                                                       |
+| Group         | Labels                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| `type/`       | `type/bug`, `type/feature`, `type/epic`, `type/task`, `type/spike` (exactly one per issue) |
+| `area/`       | `area/documentation`, `area/devops`, `area/tests`, `area/content`, `area/system`, `area/site`, `area/layout`, `area/styling` |
+| `flag/`       | `flag/breaking-change`, `flag/security`, `flag/regression`, `flag/tech-debt`               |
+| `status/`     | `status/blocked`, `status/question`                                                        |
+| `resolution/` | `resolution/duplicate`, `resolution/wontfix`                                               |
+| `ci/`         | `ci/e2e`                                                                                   |
+
+**When to use them in this repository**
+
+- `area/documentation` — the README, the Info manual, docstrings, process.
+- `area/devops` — build, tooling, CI, release, repository configuration.
+- `flag/security` — evaluating untrusted content, file-local variables, subprocess handling.
+- `flag/tech-debt` — restructuring or cleanup of working code; refactors.
+- `flag/regression` — something that worked and stopped; pairs with type **bug**.
+- `flag/breaking-change` — alters a command name, key binding, variable, or the mode's activation rule.
+- `status/blocked` — cannot proceed until an external dependency or another issue clears.
+- `resolution/duplicate`, `resolution/wontfix`, `status/question` — as their names say.
 
 There is **no** `bug` or `enhancement` label — work shape is a _type_, so
-filtering on such a label returns nothing.
+filtering on such a label returns nothing. Content, site and system areas do not
+apply to an Emacs package.
 
 ## 4. Body structure by type
 
