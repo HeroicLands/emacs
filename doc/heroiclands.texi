@@ -48,6 +48,7 @@ below documents itself in @kbd{C-h f}, and this manual is @kbd{C-c h ?}.
 * Content Language Server:: Installing the pinned runtime.
 * The Content Index::       What it is, and how to rebuild it.
 * Writing Wikilinks::       Completion, normalization, and following.
+* Authoring Markup::        Optional insertion commands and local keys.
 * Live Preview::            Previewing the active content note.
 * Querying Content::        Asking questions with jq.
 * Record Format::           Every field a record carries.
@@ -67,7 +68,9 @@ below documents itself in @kbd{C-h f}, and this manual is @kbd{C-c h ?}.
 @multitable @columnfractions .18 .82
 @item @kbd{C-c h h} @tab Jump to any repo.
 @item @kbd{C-c h g} @tab Ripgrep across every repo at once.
-@item @kbd{C-c h f} @tab Find a content note by filename, anywhere.
+@item @kbd{C-c h f} @tab Find a content note by filename, anywhere;
+with authoring loaded in @code{heroiclands-mode}, insert a footnote.
+Use @kbd{M-x heroiclands-find-note} there to find a note.
 @item @kbd{C-c h m} @tab Find a content note by canonical key.
 @item @kbd{C-c h M} @tab Reload the link manifests from disk.
 @item @kbd{C-c h c} @tab Pick an npm script and compile.
@@ -100,6 +103,20 @@ completion; @code{]]} closes it and rewrites it into canonical form, or
 says why it cannot.  Eglot shows located reference findings through Flymake
 while you write (@pxref{Seeing Them}).
 
+@section Authoring markup
+
+With @code{heroiclands-authoring} loaded, these keys apply only in
+@code{heroiclands-mode}.  @xref{Authoring Markup}.
+
+@multitable @columnfractions .18 .82
+@item @kbd{C-c h s} @tab Insert a span.
+@item @kbd{C-c h u} @tab Insert a URL link.
+@item @kbd{C-c h w} @tab Insert a wikilink.
+@item @kbd{C-c h a} @tab Insert an alert quote.
+@item @kbd{C-c h x} @tab Insert a secret block.
+@item @kbd{C-c h f} @tab Insert a footnote; overrides global note finding.
+@end multitable
+
 @section The habit worth keeping
 
 Install the pinned server with @kbd{M-x heroiclands-server-install}.
@@ -119,10 +136,21 @@ completions --- everything that is genuinely about @emph{this buffer}.
 @kbd{C-h m} describes it wherever it is on, and the lighter @samp{HL} in
 the mode line says when that is.
 
-The @kbd{C-c h} prefix is @strong{not} part of it, and stays global on
-purpose: jumping between repositories and grepping across all of them are
-things you do from anywhere, including from a buffer belonging to no
-project at all.
+The global @code{heroiclands-prefix-map} provides repository commands from
+any buffer.  Loading @code{heroiclands-authoring} adds a local prefix map
+that inherits the global map while @code{heroiclands-mode} is active.
+Insertion keys apply only in that mode.  @kbd{C-c h f} runs
+@code{heroiclands-find-note} by default; with authoring loaded it inserts
+a footnote in @code{heroiclands-mode}.  Disabling the mode restores the
+global bindings.  @xref{Authoring Markup}.
+
+Load the optional feature in your init file before enabling the mode:
+
+@example
+(require 'heroiclands)
+(require 'heroiclands-authoring)
+(global-heroiclands-mode 1)
+@end example
 
 @section What the frontmatter decides, and what the index decides
 
@@ -135,8 +163,7 @@ The @strong{frontmatter} identifies a content note wherever the file is
 saved, so the mode is relevant there.
 
 The @strong{content index} decides which capabilities are @emph{live}.
-Everything about wikilinks reads it, and without one they have nothing to
-answer from:
+Wikilink completion and reference checking use it:
 
 @multitable @columnfractions .5 .5
 @headitem Needs the index @tab Works without it
@@ -144,6 +171,7 @@ answer from:
 @item Rewriting a link on @code{]]} @tab Live browser preview
 @item @kbd{C-c h .} following a link @tab @kbd{C-c h i}, which builds one
 @item Eglot and Flymake diagnostics @tab The @kbd{C-c h} repository commands
+@item Wikilink completion suggestions @tab All six optional markup insertion commands
 @end multitable
 
 @noindent
@@ -422,7 +450,9 @@ filesystem.
 @item @kbd{C-c h h} @tab Jump to any repo.
 @item @kbd{C-c h g} @tab Ripgrep across @emph{every} repo at once — the
 one that finds where a thing is really defined.
-@item @kbd{C-c h f} @tab Find a content note by filename, anywhere.
+@item @kbd{C-c h f} @tab Find a content note by filename, anywhere;
+with authoring loaded in @code{heroiclands-mode}, insert a footnote.
+Use @kbd{M-x heroiclands-find-note} there to find a note.
 @item @kbd{C-c h m} @tab Find a content note by canonical key, completing
 over every published address.
 @item @kbd{C-c h M} @tab Reload the link manifests from disk.
@@ -777,6 +807,111 @@ by Flymake.  The server does not claim that its targets are broken without
 an index to check.  Syntax colouring remains available without Eglot or an
 index; the lighter reads @samp{HL?} until the local index is ready.
 @xref{The Mode}.
+
+@node Authoring Markup
+@chapter Authoring Markup
+
+@cindex authoring markup
+@cindex insertion commands
+@findex heroiclands-insert-span
+@findex heroiclands-insert-url-link
+@findex heroiclands-insert-wikilink
+@findex heroiclands-insert-alert-fence
+@findex heroiclands-insert-secret-fence
+@findex heroiclands-insert-footnote
+
+Load @code{(require 'heroiclands-authoring)} to make these commands
+available through @kbd{M-x}.  Their keys are active only in
+@code{heroiclands-mode}, through a local prefix map inheriting
+@code{heroiclands-prefix-map}:
+
+@multitable @columnfractions .22 .78
+@item @kbd{C-c h s} @tab @code{heroiclands-insert-span}
+@item @kbd{C-c h u} @tab @code{heroiclands-insert-url-link}
+@item @kbd{C-c h w} @tab @code{heroiclands-insert-wikilink}
+@item @kbd{C-c h a} @tab @code{heroiclands-insert-alert-fence}
+@item @kbd{C-c h x} @tab @code{heroiclands-insert-secret-fence}
+@item @kbd{C-c h f} @tab @code{heroiclands-insert-footnote}
+@end multitable
+
+@kbd{C-c h f} runs @code{heroiclands-find-note} by default.  With
+authoring loaded in @code{heroiclands-mode}, use
+@kbd{M-x heroiclands-find-note} for that command.  Each insertion is one undo step.  All six commands insert
+markup offline without an index; only wikilink completion suggestions
+require the language server and its index.
+
+@section Inline spans and links
+
+Select text to preserve it as a label.  In these examples @samp{CURSOR}
+marks point and is not inserted:
+
+@verbatim
+Command          Selected text       No selection
+span             [text]{CURSOR}      [CURSOR]{}
+URL link         [text](CURSOR)      [CURSOR]()
+wikilink         [[CURSOR|text]]     [[CURSOR|]]
+@end verbatim
+
+Multiline selections are rejected without changing the buffer.  Wikilink
+insertion also rejects selected labels containing @code{]}.  Wikilink
+insertion uses the existing completion flow and preserves a selected
+display label when a target is accepted.  @xref{Completion}.
+
+@section Alerts and secrets
+
+@code{heroiclands-insert-alert-fence} asks for @code{note}, @code{tip},
+@code{important}, or @code{warning}.  Any other alert type is rejected
+without changing the buffer.  Choosing @code{note} inserts:
+
+@verbatim
+> [!NOTE]
+> CURSOR
+@end verbatim
+
+With a selection, the command quotes its paragraphs and adds a blank
+quoted input line with point ready for more text.
+
+@code{heroiclands-insert-secret-fence} inserts:
+
+@verbatim
+:::secret
+CURSOR
+:::
+@end verbatim
+
+A selection is wrapped with a blank first body line for typing.  Both
+block commands provide surrounding blank lines.  A secret ending in a
+nested quote keeps a blank line before the closing @code{:::}.
+
+@section Footnotes
+
+@code{heroiclands-insert-footnote} chooses the smallest unused positive
+numeric ID, checking both references and definitions.  Literal code,
+comments, and frontmatter do not reserve IDs.  The reference goes after
+the current word, before punctuation; when there is no word, it goes at
+point.  The definition starts at column zero after the paragraph, or after
+its enclosing list, quote, table, heading, or poetry block as needed, with
+point after @code{[^N]: }:
+
+@verbatim
+A word[^1], followed by prose.
+
+[^1]: CURSOR
+@end verbatim
+
+Footnote insertion refuses code, comments, YAML frontmatter, existing
+wikilinks, and existing footnote definitions or their continuation lines.
+It also refuses unclosed poetry and poetry nested inside a list or quote,
+leaving the buffer unchanged.  Top-level poetry, including attributed
+poetry, places the definition after the closing fence.
+
+@section Colouring and validation
+
+These commands insert markup.  Syntax colouring uses the existing
+Markdown and wikilink support.  Preview and server diagnostics retain
+their documented scope (@pxref{Live Preview}, @pxref{Seeing Them}).
+The authoring feature does not add full highlighting or validation for
+every HeroicLands markup construct.
 
 @node Live Preview
 @chapter Live Preview

@@ -395,7 +395,7 @@ both the shortest unambiguous Address and its display name."
              (pipe (string-search "|" raw))
              (end (min (or hash (length raw)) (or pipe (length raw))))
              (target (substring raw 0 end)))
-        (when (equal target address)
+        (when (equal target (car (split-string address "#")))
           (unless pipe
             (delete-region open (point))
             (insert (format "[[%s|%s]]" raw display)))
@@ -409,12 +409,18 @@ both the shortest unambiguous Address and its display name."
              (marker-position heroiclands-goto--entry))
     (let* ((entry (marker-position heroiclands-goto--entry))
            (before (point))
-           (paired-ahead (looking-at-p "]]")))
+           ;; An authoring command can supply a label before completion.
+           ;; Accept at its separator as well as at paired closing brackets.
+           (label-end (and (looking-at-p "|")
+                           (save-excursion
+                             (search-forward "]]" (line-end-position) t))))
+           (paired-ahead (or (looking-at-p "]]") label-end)))
       (when (or paired-ahead
                 (and (>= (point) (+ (point-min) 2))
                      (equal "]]" (buffer-substring-no-properties
                                   (- (point) 2) (point)))))
-        (when paired-ahead (forward-char 2))
+        (when paired-ahead
+          (if label-end (goto-char label-end) (forward-char 2)))
         (if (heroiclands-goto--apply-selection heroiclands-goto--selected entry)
             (progn
               (heroiclands-goto--disarm)

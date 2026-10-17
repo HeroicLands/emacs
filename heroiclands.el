@@ -501,8 +501,8 @@ index decides which navigation features are available."
 (defvar heroiclands-mode-map (make-sparse-keymap)
   "Keymap for `heroiclands-mode'.
 
-Deliberately near-empty: the `C-c h' prefix is global, because its commands
-are about the constellation rather than about any one buffer.")
+The optional `heroiclands-authoring' module installs local `C-c h' editing
+keys inheriting the global constellation prefix.")
 
 (defun heroiclands--mode-setup ()
   "Install this buffer's wikilink machinery.
@@ -557,9 +557,10 @@ Both apply only to a link being *entered*; editing a settled link leaves
 it alone.  The selected server item supplies the exact target and display
 name for rewriting.
 
-The commands themselves live on the global `C-c h' prefix, which is not
-part of this mode — see Info node `(heroiclands)Quick Reference'.  The
-ones about this buffer are:
+The optional `heroiclands-authoring' module adds local `C-c h' editing
+commands; see Info node `(heroiclands)Authoring Markup'.  Other commands
+inherit the global prefix; see Info node `(heroiclands)Quick Reference'.
+The ones about this buffer include:
 
   \\[heroiclands-goto-follow]   follow the wikilink at point
   \\[heroiclands-goto-back]   jump back

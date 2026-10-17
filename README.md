@@ -123,6 +123,7 @@ line is what actually turns the mode on:
 (require 'heroiclands-server)     ; pinned server installation and index cache
 (require 'heroiclands-index)      ; the content index
 (require 'heroiclands-goto)       ; wikilink normalization and following
+(require 'heroiclands-authoring)  ; optional markup insertion commands
 (require 'heroiclands-highlight)  ; wikilink syntax colouring
 (require 'heroiclands-preview)    ; live browser preview
 (require 'heroiclands-hbs)        ; Handlebars helper completion
@@ -161,6 +162,7 @@ With `use-package` and a VC recipe:
   (require 'heroiclands-index)
   (require 'heroiclands-server)
   (require 'heroiclands-goto)
+  (require 'heroiclands-authoring)
   (require 'heroiclands-highlight)
   (require 'heroiclands-preview)
   (require 'heroiclands-hbs)
@@ -179,6 +181,7 @@ Or with `straight.el`, which does not build Texinfo; run `make` in the clone:
 ```elisp
 (straight-use-package
  '(heroiclands :type git :host github :repo "HeroicLands/heroiclands-emacs"))
+(require 'heroiclands-authoring)
 (setq heroiclands-project-roots '("~/dev/github"))
 (global-heroiclands-mode 1)
 ```
@@ -197,6 +200,7 @@ made:
   (require 'heroiclands-index)
   (require 'heroiclands-server)
   (require 'heroiclands-goto)
+  (require 'heroiclands-authoring)
   (require 'heroiclands-highlight)
   (require 'heroiclands-preview)
   (require 'heroiclands-hbs)
@@ -219,7 +223,8 @@ opened, and a deferred `:config` never runs.
 Two different things gate this package.
 
 The **frontmatter** identifies a content note, wherever the file is saved.
-The **content index** decides which capabilities are *live*:
+The **content index** supports wikilink completion, reference checking, and
+indexed navigation:
 
 | Needs the index | Works without it |
 | --- | --- |
@@ -227,6 +232,7 @@ The **content index** decides which capabilities are *live*:
 | Rewriting a link on `]]` | Live browser preview |
 | `C-c h .` following a link | `C-c h i`, which builds one |
 | Eglot and Flymake diagnostics | The `C-c h` repository commands |
+| Wikilink completion suggestions | All six optional markup insertion commands |
 
 Each behaves differently without one, deliberately: `C-c h .` refuses and names
 the command that builds an index; Eglot completion offers nothing until its
@@ -337,11 +343,15 @@ highlighting, and nothing says why. Adding `mode: markdown` before it does not
 help. Use `eval:` instead; `.dir-locals.el` is unaffected, because its `mode`
 entry is applied after the major mode is already set.
 
-### What is *not* in the mode
+### The global and local prefix maps
 
-The `C-c h` prefix stays global on purpose. Jumping between repositories and
-grepping across all of them are things you do from anywhere, including from a
-buffer belonging to no project at all.
+The global `heroiclands-prefix-map` provides repository commands from any
+buffer. Loading `heroiclands-authoring` adds a local prefix map that inherits
+it while `heroiclands-mode` is active. Its insertion keys apply only in that
+mode; disabling the mode restores the global bindings. In particular,
+`C-c h f` runs `heroiclands-find-note` by default. With authoring loaded,
+it inserts a footnote in `heroiclands-mode`; use `M-x heroiclands-find-note`
+there to find a note.
 
 ## Usage
 
@@ -361,15 +371,93 @@ you ask Emacs.
 | `C-c h P` | Reload saved project state and assets in the preview |
 | `C-c h h` | Jump to any repository |
 | `C-c h g` | Ripgrep across every repository at once |
-| `C-c h f` | Find a content note by filename |
+| `C-c h f` | Find a content note by filename outside `heroiclands-mode`; insert a footnote inside it when authoring is loaded |
 | `C-c h m` | Find a content note by canonical key |
 | `C-c h c` / `b` / `t` / `l` | Compile · typecheck · test · lint |
 | `C-c h H` / `R` | Describe a Handlebars helper · rescan them |
+
+With `heroiclands-authoring` loaded, these keys apply only in `heroiclands-mode`:
+
+| Key | Command |
+| --- | --- |
+| `C-c h s` | `heroiclands-insert-span` |
+| `C-c h u` | `heroiclands-insert-url-link` |
+| `C-c h w` | `heroiclands-insert-wikilink` |
+| `C-c h a` | `heroiclands-insert-alert-fence` |
+| `C-c h x` | `heroiclands-insert-secret-fence` |
+| `C-c h f` | `heroiclands-insert-footnote` |
 
 Press `C-c h` and wait; which-key lists the rest.
 
 And while typing in a note: `[[` starts a wikilink and opens completion; `]]`
 closes it and rewrites it into canonical form, or says why it cannot.
+
+### Authoring markup
+
+Load `(require 'heroiclands-authoring)` to make all six commands available
+through `M-x`. Each insertion is one undo step and works offline without an
+index. Only wikilink completion suggestions require the language server and
+its index. The Info node `(heroiclands)Authoring Markup` describes the commands.
+
+For the inline commands, select text to preserve it as the label. `CURSOR`
+marks the editing position in these examples; it is not inserted:
+
+| Command | With selected `text` | Without a selection |
+| --- | --- | --- |
+| `heroiclands-insert-span` | `[text]{CURSOR}` | `[CURSOR]{}` |
+| `heroiclands-insert-url-link` | `[text](CURSOR)` | `[CURSOR]()` |
+| `heroiclands-insert-wikilink` | `[[CURSOR\|text]]` | `[[CURSOR\|]]` |
+
+Inline commands reject multiline selections without changing the buffer.
+Wikilink insertion also rejects selected labels containing `]`.
+Wikilink insertion starts the existing completion flow and preserves the
+selected display label when a target is accepted.
+
+`heroiclands-insert-alert-fence` asks for `note`, `tip`, `important`, or
+`warning`; any other alert type is rejected without changing the buffer.
+Choosing `note` inserts:
+
+```markdown
+> [!NOTE]
+> CURSOR
+```
+
+A selection becomes quoted paragraphs, followed by a blank quoted input line
+with point ready for more text. `heroiclands-insert-secret-fence` inserts:
+
+```markdown
+:::secret
+CURSOR
+:::
+```
+
+A selected block is wrapped with a blank first body line for typing. Both
+block commands provide surrounding blank lines. A secret ending in a nested
+quote keeps a blank line before the closing `:::`.
+
+`heroiclands-insert-footnote` chooses the smallest unused positive numeric ID
+from both references and definitions, ignoring literal code, comments, and
+frontmatter. It places the reference after the current word and before its
+punctuation, or at point when there is no word. The definition starts at
+column zero after the paragraph, or after its enclosing list, quote, table,
+heading, or poetry block as needed, with point after `[^N]: `:
+
+```markdown
+A word[^1], followed by prose.
+
+[^1]: CURSOR
+```
+
+Footnote insertion refuses code, comments, YAML frontmatter, existing
+wikilinks, and existing footnote definitions or their continuation lines.
+It also refuses unclosed poetry and poetry nested inside a list or quote,
+leaving the buffer unchanged. Top-level poetry, including attributed poetry,
+places the definition after the closing fence.
+
+These commands insert markup. Syntax colouring uses the existing Markdown
+and wikilink support; preview and server diagnostics keep their documented
+scope. The feature does not add full highlighting or validation for every
+HeroicLands markup construct.
 
 ### Asking Emacs
 
@@ -547,6 +635,7 @@ what keeps `C-h f` and the manual joined up.
 | `heroiclands-server.el` | Pinned server installation and private index validation |
 | `heroiclands-index.el` | Refreshing and querying the content index |
 | `heroiclands-goto.el` | Wikilink normalization and following |
+| `heroiclands-authoring.el` | Optional markup insertion and mode-local prefix keys |
 | `heroiclands-eglot.el` | Indexed completion and Xref through the pinned server |
 | `heroiclands-preview.el` | Live browser preview |
 | `heroiclands-preview.mjs` | Single-page renderer and loopback browser page |
