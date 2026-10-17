@@ -550,8 +550,8 @@ While the mode is on, in a content note:
 
   `[['   starts a wikilink and opens server completion by name, alias,
          shortcode, or Address; `#' offers anchors.
-  `]]'   closes it and rewrites it into canonical form, or reports why it
-         cannot: an unknown note, an ambiguous name, a missing anchor.
+  `]]'   closes it and rewrites it into canonical form, offering a choice
+         for an ambiguous name or reporting an unknown note or missing anchor.
 
 Both apply only to a link being *entered*; editing a settled link leaves
 it alone.  The selected server item supplies the exact target and display

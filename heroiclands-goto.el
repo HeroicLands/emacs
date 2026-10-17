@@ -31,6 +31,7 @@
 (require 'subr-x)
 (require 'seq)
 (require 'xref)
+(require 'ucs-normalize)
 
 (defgroup heroiclands-goto nil
   "Following wikilinks between content notes."
@@ -63,12 +64,32 @@ folded to the hyphen one before lookup."
         (concat (match-string 1 s) "-" (match-string 2 s))
       s)))
 
+(defun heroiclands-goto--address-text (value)
+  "Read published Address VALUE as canonical text, retaining its anchor.
+Published objects carry exactly `address', `anchor' and `anchorKind'.
+Already-decoded strings and null values remain unchanged."
+  (cond
+   ((or (null value) (stringp value)) value)
+   ((and (listp value) (= (length value) 6)
+         (plist-member value :address)
+         (plist-member value :anchor)
+         (plist-member value :anchorKind)
+         (stringp (plist-get value :address))
+         (or (null (plist-get value :anchor))
+             (stringp (plist-get value :anchor))))
+    (concat (plist-get value :address)
+            (when (plist-get value :anchor)
+              (concat "#" (plist-get value :anchor)))))
+   (t (error "Malformed published Address in content index"))))
+
 (defun heroiclands-goto--read-index (file table types packages)
   "Read one JSON Lines index FILE into TABLE and TYPES.
 
 Returns the package it declares, or nil.  Every record is filed under both
-its bare `type-shortcode' slug and its canonical `package-type-shortcode'
-key, so a link resolves whichever form it was written in."
+its bare `type-shortcode' slug and full canonical Address key, so a link
+resolves whichever form it was written in.  Decode the published Address
+objects in navigation fields to strings, including any supplied anchor;
+retain each anchor's kind and the record's owning index."
   (let ((package nil))
     (with-temp-buffer
       (insert-file-contents file)
@@ -82,6 +103,16 @@ key, so a link resolves whichever form it was written in."
                                               :false-object nil))
                    (address (plist-get record :address))
                    (type (plist-get record :type)))
+              (when address
+                (setf (plist-get address :canonical)
+                      (heroiclands-goto--address-text (plist-get address :canonical))))
+              (dolist (anchor (append (plist-get record :anchors) nil))
+                (when (plist-member anchor :link)
+                  (setf (plist-get anchor :link)
+                        (heroiclands-goto--address-text (plist-get anchor :link)))))
+              (when (plist-get record :documentation)
+                (setf (plist-get record :documentation)
+                      (heroiclands-goto--address-text (plist-get record :documentation))))
               (when type (puthash (downcase type) t types))
               (when-let* ((pkg (plist-get record :package)))
                 (puthash (downcase pkg) t packages)
@@ -246,9 +277,21 @@ See Info node `(heroiclands)Following a Link'."
   (xref-go-back))
 
 
+(defun heroiclands-goto--search-key (text)
+  "Fold TEXT's case and combining accents while retaining word separators.
+The index's ASCII name and alias fields supply its other transliterations."
+  (downcase
+   (string-trim
+    (replace-regexp-in-string
+     "[ \t\n\r]+" " "
+     (apply #'string
+            (seq-remove (lambda (char)
+                          (eq (get-char-code-property char 'general-category) 'Mn))
+                        (ucs-normalize-NFD-string text)))))))
+
 (defun heroiclands-goto--fold (s)
-  "Reduce S to letters and digits, lowercased, for an is-this-the-same test."
-  (replace-regexp-in-string "[^a-z0-9]" "" (downcase s)))
+  "Reduce S to ASCII letters and digits for exact name comparisons."
+  (replace-regexp-in-string "[^a-z0-9]" "" (heroiclands-goto--search-key s)))
 
 ;;;; --------------------------------------------- when the machinery is live
 
@@ -328,8 +371,9 @@ unterminated wikilink to test for.")
 
 With this on, `[[Aurochs]]' becomes `[[being-aurochs|Aurochs]]' the moment it
 is closed or its paired closing brackets receive a server completion.  A link
-naming no note — or naming several — raises an error when typed closed.  Set
-this to nil to type links without that check."
+naming several notes offers a choice; an unknown name raises an error.
+Partial names and aliases are tried after exact matches.  Set this to nil
+to type links without that check."
   :type 'boolean :group 'heroiclands-goto)
 
 (defun heroiclands-goto--name-matches (text index)
@@ -340,11 +384,16 @@ alias itself when TEXT named one.  An author who wrote a sobriquet meant that
 sobriquet, so normalization keeps their wording rather than replacing it with
 the canonical name.
 
-Every comparison is on folded characters, so case, punctuation and the
-difference between an authored name and its ASCII form all stop mattering."
+Exact comparisons fold case, accents and punctuation, and also check the
+indexed ASCII name and aliases.
+If no exact name or alias matches, try case- and accent-folded substrings
+of names and aliases, including their indexed ASCII forms.  Partial
+matches display the full name, as server completion does."
   (let ((want (heroiclands-goto--fold text))
+        (needle (heroiclands-goto--search-key text))
         (seen nil)
-        (hits nil))
+        (hits nil)
+        (partial nil))
     (maphash
      (lambda (_key record)
        (let ((address (plist-get (plist-get record :address) :canonical)))
@@ -374,9 +423,41 @@ difference between an authored name and its ASCII form all stop mattering."
                  ;; Prefer the authored spelling of whatever matched.
                  (let ((i (seq-position folded match)))
                    (when (and i (nth i authored)) (setq match (nth i authored))))))
-             (when match (push (cons record match) hits))))))
+             (if match
+                 (push (cons record match) hits)
+               (when (and (not (string-empty-p want))
+                          (seq-some
+                           (lambda (name)
+                             (and (stringp name)
+                                  (string-search needle (heroiclands-goto--search-key name))))
+                           (append (list full ascii) authored folded)))
+                 (push (cons record full) partial)))))))
      (plist-get index :table))
-    hits))
+    (or hits partial)))
+
+(defun heroiclands-goto--choose-name (target hits)
+  "Choose which of HITS the authored TARGET names."
+  (let* ((choices
+          (sort
+           (mapcar (lambda (hit)
+                     (let ((record (car hit)))
+                       (cons (format "%s — %s"
+                                     (plist-get (plist-get record :name) :full)
+                                     (plist-get (plist-get record :address) :canonical))
+                             hit)))
+                   hits)
+           (lambda (a b) (string< (car a) (car b)))))
+         (choice (completing-read (format "Which note does %s name? " target)
+                                 choices nil t)))
+    (or (cdr (assoc choice choices))
+        (user-error "No note selected"))))
+
+(defun heroiclands-goto--record-address (record table)
+  "Address RECORD without redirecting a colliding slug through TABLE."
+  (let* ((address (plist-get record :address))
+         (slug (plist-get address :slug)))
+    (if (eq record (gethash slug table)) slug
+      (plist-get address :canonical))))
 
 (defun heroiclands-goto--apply-selection (selected entry)
   "Close the exact server-selected target in SELECTED, armed at ENTRY.
@@ -434,8 +515,8 @@ Runs from `post-self-insert-hook'.  A link that already states its display
 text is left alone.  A selected server item supplies the exact Address and
 display name; otherwise the target is resolved from the available indexes.
 
-An unknown or ambiguous target is reported at the link.  A missing anchor
-is reported when the note's index is available.
+An ambiguous name offers a choice of indexed notes.  An unknown target or
+a missing anchor is reported at the link when the index is available.
 
 See Info node `(heroiclands)Normalization'."
   (when (and heroiclands-goto-canonicalize-on-close
@@ -492,20 +573,13 @@ See Info node `(heroiclands)Normalization'."
               (cond
                ((null hits)
 		(user-error "No note named or addressed `%s'" target))
-               ((cdr hits)
-		(user-error "`%s' names %d notes (%s) — say which"
-                            target (length hits)
-                            (string-join
-                             (seq-take (mapcar (lambda (h)
-						 (plist-get (plist-get (car h) :address)
-                                                            :slug))
-                                               hits)
-                                       4)
-                             ", ")))
                (t
-		(let* ((record (car (car hits)))
-                       (address (plist-get (plist-get record :address) :slug))
-                       (full (or (cdr (car hits))
+		(let* ((hit (if (cdr hits)
+                                (heroiclands-goto--choose-name target hits)
+                              (car hits)))
+                       (record (car hit))
+                       (address (heroiclands-goto--record-address record table))
+                       (full (or (cdr hit)
 				 (plist-get (plist-get record :name) :full)
 				 address))
                        (anchors (append (plist-get record :anchors) nil)))

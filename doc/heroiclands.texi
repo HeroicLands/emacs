@@ -699,11 +699,21 @@ An exact alias stays as the display text.  An authored display half after
 from another system target or another package's note, even when both
 records point to the same Markdown file.
 
-When no completion was selected, Emacs resolves a typed Address or exact
-name against the available private indexes.  An unknown or ambiguous name
-raises an error and asks you to choose.  A missing anchor is also reported
-when its note's index is available.  If no index is available, the link is
-left as typed and the buffer reports that it was not checked.
+When no completion was selected, Emacs first resolves exact Addresses,
+full names, and aliases against the available private indexes.  If none
+matches, it searches substrings of names and aliases, ignoring case and
+accents and using their indexed ASCII spellings.  For example,
+@code{[[Veldirno]]} can find @emph{City of Veldirno}; a partial match uses
+the full name as display text.  This fallback searches names, while
+completion also searches parts of Addresses and shortcodes.
+
+When several notes match, Emacs prompts with each full name and canonical
+Address, including distinct records that share a source file.  The chosen
+Address keeps that record's identity even when its short slug belongs to
+another note.  Canceling leaves the link as typed.  An unknown name or a
+missing anchor is reported without rewriting the link.  If no index is
+available, the link is left as typed and the buffer reports that it was not
+checked.
 
 Completion and normalization apply to a link you are entering.  Editing a
 closed link wakes neither.  Set
@@ -881,7 +891,9 @@ CURSOR
 
 A selection is wrapped with a blank first body line for typing.  Both
 block commands provide surrounding blank lines.  A secret ending in a
-nested quote keeps a blank line before the closing @code{:::}.
+nested quote keeps a blank line before the closing @code{:::}.  Secret
+insertion and wrapping reject nested secrets, even when an existing secret
+contains attributed divs.
 
 @section Footnotes
 
@@ -1024,14 +1036,21 @@ is relative to the content root, never absolute.
 
 @item address
 @code{slug} is what goes inside @code{[[@dots{}]]} within the package
-(@code{being-aurochs}); @code{canonical} includes package and system
-(@code{sohl-note-being-aurochs}).  Both @code{null} for a note with no type or
-shortcode, which has no address at all.
+(@code{being-aurochs}).  In the JSON index, @code{canonical} is an object:
+@code{canonical.address} holds the complete Address, including package and
+system (@code{sohl-note-being-aurochs}); @code{canonical.anchor} and
+@code{canonical.anchorKind} are @code{null} for the note itself.  The whole
+@code{address} field is @code{null} for a note with no published Address.
+Use @code{.address.canonical.address} to select the canonical text with jq.
 
 @item anchors
-Every @code{@{#slug@}} heading the body declares, each with its
-@code{name}, @code{level}, @code{line} in the file, and the
-@code{slug#anchor} @code{link} that reaches it.
+Body and event anchors, each with its @code{name}, @code{slug},
+@code{level} and @code{kind}, plus the source @code{line} when known.  Each
+@code{link} is a published Address object with @code{address}, @code{anchor}
+and @code{anchorKind}.  A body heading's anchor kind is @code{prose}; an
+event's is @code{event}.  Emacs navigation decodes these Address objects
+into canonical strings with @code{#anchor} where present, retaining each
+anchor's kind.  The JSON index used by jq keeps the published objects.
 
 @item nameAscii
 @code{name.full} reduced to printable 7-bit ASCII.  Transliterated, not

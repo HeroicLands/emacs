@@ -36,8 +36,14 @@ completion adds the display text immediately and leaves point after the link.
 
 Selecting an exact alias keeps that alias as display text. A selected result
 keeps its server supplied target even when another note shares its source file.
-When you type a name without choosing a completion, `]]` reports an unknown
-or ambiguous name instead of choosing a target for you.
+When you type a name without choosing a completion, `]]` first checks exact
+Addresses, full names, and aliases. If none matches, it searches parts of
+names and aliases, ignoring case and accents and using their indexed ASCII
+spellings. For example, `[[Veldirno]]` can find *City of Veldirno*. Partial
+matches use the note's full name as display text. When several notes match,
+Emacs asks you to choose from their full names and canonical Addresses;
+canceling leaves the link as typed. An unknown name still reports an error.
+Partial Address and shortcode searches remain available through completion.
 
 `C-c h .` follows a link, landing on the anchor's line. A package-qualified
 link opens the note under its owning project's content tree when that
@@ -103,13 +109,30 @@ configuration to build its index.
 
 ## Install
 
-Clone it and build the manual:
+Clone it, activate the local git hooks, and build the manual:
 
 ```bash
 git clone https://github.com/HeroicLands/heroiclands-emacs.git \
   ~/dev/github/heroiclands-emacs
+make -C ~/dev/github/heroiclands-emacs hooks
 make -C ~/dev/github/heroiclands-emacs
 ```
+
+`make hooks` sets this clone's `core.hooksPath` to `.githooks`. The relative
+path uses each linked worktree's own hook files; run `make hooks` from either
+the clone or a linked worktree. The canonical hooks from
+[HeroicLands/.github](https://github.com/HeroicLands/.github#local-git-hooks-and-actionsgithooks)
+refuse commits on `main` or `master` and assistant credits in commit messages.
+They use Git and POSIX shell utilities, with an available UTF-8 locale for
+message checks. They require no Node or npm installation.
+
+Local exceptions use Git configuration: `hooks.protectedBranch=false` or
+`hooks.allowCommitOnMain=true` permits protected-branch commits;
+`hooks.noAttribution=false` disables the message guard. Configure these with
+`git config` in the clone. `git commit --no-verify` bypasses the local hooks;
+pull-request checks still enforce their rules. CI checks the two committed
+hooks against the canonical set and rejects missing, changed, or extra files.
+Run `make check-hooks` to check setup in fresh clones and a linked worktree.
 
 ## Activating it
 
@@ -433,7 +456,9 @@ CURSOR
 
 A selected block is wrapped with a blank first body line for typing. Both
 block commands provide surrounding blank lines. A secret ending in a nested
-quote keeps a blank line before the closing `:::`.
+quote keeps a blank line before the closing `:::`. Secret insertion and
+wrapping reject nested secrets, even when an existing secret contains
+attributed divs.
 
 `heroiclands-insert-footnote` chooses the smallest unused positive numeric ID
 from both references and definitions, ignoring literal code, comments, and

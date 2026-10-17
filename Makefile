@@ -7,7 +7,7 @@ LISP := heroiclands.el heroiclands-hbs.el heroiclands-preview.el heroiclands-dat
         heroiclands-server.el heroiclands-index.el heroiclands-goto.el heroiclands-highlight.el \
         heroiclands-eglot.el heroiclands-authoring.el
 
-.PHONY: all info compile check check-preview hooks clean
+.PHONY: all info compile check check-preview check-hooks hooks clean
 
 all: info
 
@@ -48,16 +48,15 @@ check: compile
 check-preview:
 	node --test tests/preview-browser.mjs tests/preview-infobox.mjs
 
-## Activate the committed git hooks for this checkout.
-##
-## sohl-thalorna does this from npm's `prepare' script; there is no package
-## manifest here, so it is a target you run once after cloning. The hooks
-## refuse a commit carrying AI attribution, and refuse committing on `main' --
-## the same rules the No Attribution workflow and the branch ruleset enforce
-## server-side, moved forward to where the fix is still cheap.
+## Activate the canonical hooks in this clone and its linked worktrees.
+## The relative path resolves against each worktree's own checkout.
 hooks:
-	git config core.hooksPath .githooks
+	git config --local core.hooksPath .githooks
 	@echo "hooks active: $$(git config core.hooksPath)"
+
+## Verify native hook setup in fresh clones and a linked worktree.
+check-hooks:
+	sh ci/hooks.test.sh
 
 clean:
 	rm -f *.elc info/heroiclands.info

@@ -21,6 +21,15 @@ permissions:
     contents: read
 
 jobs:
+    githooks:
+        name: Canonical git hooks
+        runs-on: ubuntu-vm
+        steps:
+            - uses: actions/checkout@v7
+            - uses: HeroicLands/.github/actions/githooks@028cfaa520b588cae334f046d3530947a499fae3
+            - name: Check native hook installation
+              run: make check-hooks
+
     check:
         name: Emacs ${{ matrix.emacs }}
         # A throwaway Ubuntu container with sudo: setup-emacs installs through
