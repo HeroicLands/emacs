@@ -62,15 +62,28 @@ active. A foreign package whose index is unavailable is reported as
 unavailable rather than as a broken link. Build checks still validate the
 published output.
 
-**Live note preview.** `C-c h p` opens a separate browser window for the
-current note. The page updates three seconds after the last edit, including
-unsaved SQL tables, images, links, code fences, and GM disclosures. `C-c h P`
-reloads saved project state, configuration, and assets. Pandoc, the pinned
-server installation, and the project's installed site theme are required. The
-preview never writes to the note or site build directory. Notes with a
-generated infobox show it beside the page on wide screens and above it on
-narrow screens. Set `heroiclands-preview-show-infobox` to `nil` in a buffer to
-see its body alone.
+**Live note preview.** `C-c h p` opens a browser window for the current
+buffer. The page updates three seconds after the last edit. Ordinary Markdown,
+local expressions, tables, and alerts render immediately. Wikilinks and spans
+keep their complete source: blue brackets, purple addresses, bold foreground
+labels, and grey attributes. Image wikilinks include the entire opening `![[`
+marker in blue. Spans are bold throughout, including brackets and attributes,
+while retaining those colors. Definition-list terms are bold; their definitions
+render as normal Markdown. SQL and pagelist fences stay grey; date formatting,
+cross-note references, and maps stay green source. Alerts have an icon, title,
+and tinted background. The palette follows the active Emacs theme, including theme changes.
+
+Content comes from this buffer. No content index, neighboring notes, dependency
+cache, Pandoc, or site theme is required. Generated sections and See also are
+absent; publication/link checks and SQL queries are not run. Authored ages,
+including zero, are preserved; missing ages are computed from neutral birth
+dates using the setting-wide `currentDate`, which defaults to `"720.1"`.
+Unavailable ages are omitted. Locally available infobox fields appear when
+enabled; set
+`heroiclands-preview-show-infobox` to `nil` in a buffer to hide them. `C-c h P`
+renders immediately without restarting the browser and rereads the project
+current date. Preview never writes to the note or site build directory, and
+links do not navigate.
 
 **The content index, queryable.** The pinned language server builds it at
 startup and after saves. `C-c h i` refreshes the current project on demand;
@@ -96,9 +109,8 @@ compile buffer whose diagnostics are clickable.
 ## Requirements
 
 - Emacs 31.1 or newer
-- The project's installed `@heroiclands/hugo-theme` for preview styling
-- The pinned content language server installation for preview rendering
-- `node`, `jq`, and `pandoc` on `PATH`
+- A content language server installation containing `@heroiclands/package-build/preview` for preview rendering
+- `node` and `jq` on `PATH`
 - `npm` to install the pinned content language server
 - `rg` on `PATH` for `C-c h g` cross-project text search
 - `makeinfo` to build the manual
@@ -391,7 +403,7 @@ you ask Emacs.
 | `C-c h .` | Follow the wikilink at point, landing on its anchor |
 | `C-c h ,` | Jump back |
 | `C-c h p` | Toggle the live browser preview |
-| `C-c h P` | Reload saved project state and assets in the preview |
+| `C-c h P` | Render the current buffer immediately |
 | `C-c h h` | Jump to any repository |
 | `C-c h g` | Ripgrep across every repository at once |
 | `C-c h f` | Find a content note by filename outside `heroiclands-mode`; insert a footnote inside it when authoring is loaded |
@@ -620,7 +632,7 @@ index to check. Syntax colouring still works while Eglot is unavailable.
 | `heroiclands-index-projects` | `all` | Foreign projects for Eglot and local link resolution |
 | `heroiclands-preview-idle-delay` | `3` | Idle seconds before rendering |
 | `heroiclands-preview-new-window` | `t` | Request a separate browser window |
-| `heroiclands-preview-show-infobox` | `t` | Show generated infoboxes when present |
+| `heroiclands-preview-show-infobox` | `t` | Show local infobox fields when present |
 | `heroiclands-index-jq` | `jq` | The jq executable |
 
 ## Documentation
@@ -700,3 +712,48 @@ everyone.**
   the case where an improvement would otherwise disappear.
 - GPL-3 is what Emacs itself and the rest of the HeroicLands repositories use,
   so code moves between them without a licensing question.
+
+## Setting date in preview
+
+The top-level `currentDate` in `package-build.config.yaml` supplies the setting's
+current neutral date, shared with all other toolchain outputs:
+
+```yaml
+contentPackage: thalorna
+currentDate: "720.1"
+```
+
+Keep the value quoted. With no configuration or no setting, preview uses
+`"720.1"`. A neutral birth date of `"700.1"` therefore gives age 20 by default;
+`currentDate: "740.1"` gives age 40. Explicit authored ages take precedence.
+Calendar-dependent or unknown birth dates leave an unavailable age omitted.
+Preview reads only this setting, without building content or loading an index,
+and rereads it on each render, including `C-c h P`. An invalid explicit date
+reports the configuration file and leaves the last good page visible. The
+normal `.yml` and trusted executable `.mjs` configuration alternatives are also
+supported; an executable config can perform its own work when imported.
+
+## Developing the source preview
+
+`make check` checks the Emacs controls. `make check-preview` checks the browser
+protocol, error preservation, generation invalidation, and direct shared HTML/CSS
+handling. To include integration with the real renderer, run:
+
+```sh
+PREVIEW_PACKAGE_ROOT=/absolute/path/to/package-build make check-preview
+```
+
+The path can also name an installed server directory whose dependencies expose
+`@heroiclands/package-build/preview`. The real integration fixture has no content
+tree, saved note, project config, site theme, or content index. It then creates
+and edits a minimal root config to verify current-date overrides, refresh,
+invalid-date errors, authored zero ages, and omitted unavailable ages. Without
+this explicit path, the real-renderer test is reported as skipped; protocol tests
+still run.
+
+The locked editor server installation pins package-build `23.12.0`, which
+provides the shared preview renderer and project current-date reader. After
+upgrading this Emacs package, run `M-x heroiclands-server-install` to update the
+installed runtime. An older installation without the shared preview API reports
+an upgrade error. The helper resolves package-build from
+`heroiclands-server-directory`, independent of packages in the content project.
