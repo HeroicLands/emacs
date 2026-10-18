@@ -25,7 +25,7 @@ jobs:
         name: Canonical git hooks
         runs-on: ubuntu-vm
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
             - uses: HeroicLands/.github/actions/githooks@028cfaa520b588cae334f046d3530947a499fae3
             - name: Check native hook installation
               run: make check-hooks
@@ -40,18 +40,18 @@ jobs:
             matrix:
                 emacs: ["31.1", "release-snapshot"]
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
             # setup-emacs installs Emacs through Nix, which reads github.com's
             # API; unauthenticated, every runner on the LAN shares one rate
             # limit. Installing Nix first with a github.com token lifts it, and
             # setup-emacs then uses that Nix. The token is the organization's
             # read-only github.com token, shared with Renovate.
-            - uses: cachix/install-nix-action@v31
+            - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31
               with:
                   github_access_token: ${{ secrets.RENOVATE_GITHUB_COM_TOKEN }}
 
-            - uses: purcell/setup-emacs@master
+            - uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master
               with:
                   version: ${{ matrix.emacs }}
 
