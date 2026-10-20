@@ -1,4 +1,4 @@
-# heroiclands-emacs
+# emacs
 
 EMACS ?= emacs
 MAKEINFO ?= makeinfo

@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
     - name: Report a security vulnerability (private)
-      url: https://github.com/HeroicLands/heroiclands-emacs/security/advisories/new
+      url: https://github.com/HeroicLands/emacs/security/advisories/new
       about: Exploitable weaknesses must be reported privately as a security advisory — never as a public issue. See the Security Policy and issue-reporting §7.
     - name: An issue with the SoHL system itself
       url: https://github.com/HeroicLands/Song-of-Heroic-Lands-FoundryVTT/issues/new/choose

@@ -1,4 +1,4 @@
-# heroiclands-emacs
+# emacs
 
 Emacs support for authoring [HeroicLands](https://www.heroiclands.org) content:
 working across the repository constellation, previewing a content note in a browser,
@@ -124,7 +124,7 @@ configuration to build its index.
 Clone it, activate the local git hooks, and build the manual:
 
 ```bash
-git clone https://github.com/HeroicLands/heroiclands-emacs.git \
+git clone https://github.com/HeroicLands/emacs.git \
   ~/dev/github/heroiclands-emacs
 make -C ~/dev/github/heroiclands-emacs hooks
 make -C ~/dev/github/heroiclands-emacs
@@ -190,7 +190,7 @@ With `use-package` and a VC recipe:
 
 ```elisp
 (use-package heroiclands
-  :vc (:url "https://github.com/HeroicLands/heroiclands-emacs"
+  :vc (:url "https://github.com/HeroicLands/emacs"
        :rev :newest
        :doc "doc/heroiclands.texi")     ; without this there is no manual
   :config
@@ -215,7 +215,7 @@ Or with `straight.el`, which does not build Texinfo; run `make` in the clone:
 
 ```elisp
 (straight-use-package
- '(heroiclands :type git :host github :repo "HeroicLands/heroiclands-emacs"))
+ '(heroiclands :type git :host github :repo "HeroicLands/emacs"))
 (require 'heroiclands-authoring)
 (setq heroiclands-project-roots '("~/dev/github"))
 (global-heroiclands-mode 1)

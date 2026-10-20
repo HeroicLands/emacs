@@ -1,7 +1,7 @@
-# Issue Reporting — heroiclands-emacs
+# Issue Reporting — emacs
 
 This document defines how issues are created and classified in the
-**`heroiclands-emacs`** repository, which ships the Emacs package for authoring
+**`emacs`** repository, which ships the Emacs package for authoring
 HeroicLands content.
 
 **This repository is its own tracker.** File editor-tooling work here, not in the
