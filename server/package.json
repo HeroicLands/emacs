@@ -7,7 +7,7 @@
   },
   "overrides": {
     "@heroiclands/content-language-server": {
-      "@heroiclands/package-build": "23.12.6"
+      "@heroiclands/package-build": "25.0.0"
     }
   }
 }
