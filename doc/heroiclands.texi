@@ -604,7 +604,7 @@ features.  In a recognized Markdown note within a configured content
 project, the mode starts the pinned content language server.
 
 @kbd{M-.} follows the Address or wikilink at point.  @kbd{C-M-.}
-searches names, aliases, ASCII spellings, shortcodes, and Addresses in
+searches names, alternate names, ASCII spellings, shortcodes, and Addresses in
 the current project; @code{tag:myth} searches tags.  Use
 @code{name:camel}, @code{shortcode:bctrncml}, or @code{type:being} to
 search one field.  Prefix the query with @code{all:} to include foreign
@@ -659,7 +659,7 @@ In a recognized content note, Eglot asks the pinned content language server
 for indexed completion candidates.  Typing @code{[[} opens completion for
 notes in the current project and the foreign projects selected by
 @code{heroiclands-index-projects}.  The server searches saved
-@code{name.full}, aliases, shortcodes, and Addresses.  A query matches
+@code{name.full}, alternate names, shortcodes, and Addresses.  A query matches
 anywhere in those fields: @code{[[camel} can offer Bactrian Camel,
 Xerathian Bactrian Camel, and a note whose name merely contains
 ``camel''.  The candidate shows its owning package and canonical Address.
@@ -677,7 +677,7 @@ anchors.  The same server handles image links, with the @code{none}
 system as their default.  Ordinary wikilinks default to @code{note}.
 Completion stays quiet when editing a link that has already been closed.
 The server reads saved metadata; save a changed note before expecting its
-new name or alias in completion.
+new name or alternate name in completion.
 
 @node Normalization
 @section Normalization
@@ -694,14 +694,14 @@ display name:
 [[being-orca]]         -> [[being-orca|Killer Whale]]
 @end verbatim
 
-An exact alias stays as the display text.  An authored display half after
+An exact alternate name stays as the display text.  An authored display half after
 @code{|} stays exactly as written.  The selected target remains distinct
 from another system target or another package's note, even when both
 records point to the same Markdown file.
 
 When no completion was selected, Emacs first resolves exact Addresses,
-full names, and aliases against the available private indexes.  If none
-matches, it searches substrings of names and aliases, ignoring case and
+full names, and alternate names against the available private indexes.  If none
+matches, it searches substrings of names and alternate names, ignoring case and
 accents and using their indexed ASCII spellings.  For example,
 @code{[[Veldirno]]} can find @emph{City of Veldirno}; a partial match uses
 the full name as display text.  This fallback searches names, while
@@ -1087,9 +1087,10 @@ anchor's kind.  The JSON index used by jq keeps the published objects.
 stripped: @code{Kûrbúl ¾-Helm} becomes @code{Kurbul 3/4-Helm},
 @code{Ærling} becomes @code{AErling}, @code{Þorn} becomes @code{Thorn}.
 
-@item aliasesAscii
-The same for @code{name.aliases}, in the authored order.  An empty array
-when a note has none — never @code{null}.
+@item formsAscii
+The same for every form listed under @code{name}, as an object from
+language code to its forms in the authored order.  A language with no
+form is absent.
 @end table
 
 @node Handlebars Helpers

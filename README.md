@@ -11,7 +11,7 @@ lists what is there.
 ## What it gives you
 
 **Wikilinks with indexed completion.** A wikilink names a note by its Address.
-The pinned content language server searches saved names, aliases, shortcodes,
+The pinned content language server searches saved names, alternate names, shortcodes,
 and Addresses across the current project and selected foreign projects.
 Typing `[[camel` can offer both Bactrian Camel and Xerathian Bactrian Camel;
 matches can occur anywhere in a name or Address. Eglot inserts the shortest
@@ -34,11 +34,11 @@ Typing `]]` rewrites what you entered into canonical form:
 When Emacs has already inserted the closing `]]` as a pair, accepting a
 completion adds the display text immediately and leaves point after the link.
 
-Selecting an exact alias keeps that alias as display text. A selected result
+Selecting an exact alternate name keeps that name as display text. A selected result
 keeps its server supplied target even when another note shares its source file.
 When you type a name without choosing a completion, `]]` first checks exact
-Addresses, full names, and aliases. If none matches, it searches parts of
-names and aliases, ignoring case and accents and using their indexed ASCII
+Addresses, full names, and alternate names. If none matches, it searches parts of
+names and alternate names, ignoring case and accents and using their indexed ASCII
 spellings. For example, `[[Veldirno]]` can find *City of Veldirno*. Partial
 matches use the note's full name as display text. When several notes match,
 Emacs asks you to choose from their full names and canonical Addresses;

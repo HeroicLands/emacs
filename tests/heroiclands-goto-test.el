@@ -124,10 +124,13 @@
                         "Bactrian Camel" (list :table table)))
                2))))
 
-(defun heroiclands-goto-test--record (canonical slug full &optional aliases)
-  "Make an indexed note with CANONICAL identity, SLUG, FULL name and ALIASES."
+(defun heroiclands-goto-test--record (canonical slug full &optional forms)
+  "Make an indexed note with CANONICAL identity, SLUG, FULL name and FORMS.
+FORMS is the list of English forms; a `name' key may also be given as a
+plist of language code to forms in place of that list."
   (list :address (list :canonical canonical :slug slug)
-        :name (list :full full :aliases aliases)
+        :name (append (list :full full)
+                      (if (keywordp (car-safe forms)) forms (and forms (list :en forms))))
         :file (list :path "Shared.md")
         :anchors '((:slug "dossier" :name "Dossier"))))
 
@@ -172,9 +175,9 @@
                    "a-none-lore-town" "lore-town" "City of Veldirno"))
          (exact (heroiclands-goto-test--record
                  "a-none-lore-river" "lore-river" "Veldirno" '("Silver River")))
-         (alias (heroiclands-goto-test--record
+         (other (heroiclands-goto-test--record
                  "a-none-lore-alias" "lore-alias" "Northern City" '("VELDIRNO")))
-         (index (heroiclands-goto-test--index partial exact alias)))
+         (index (heroiclands-goto-test--index partial exact other)))
     (should (= 2 (length (heroiclands-goto--name-matches "veldirno" index))))
     (heroiclands-goto-test--closing "[[Silver River]]" index
       (heroiclands-goto--close-link)
@@ -228,7 +231,7 @@
   (let* ((record (heroiclands-goto-test--record
                   "a-none-lore-isle" "lore-isle" "Isle of Ægir" '("Þorn's Refuge")))
          (record (plist-put record :nameAscii "Isle of Aegir"))
-         (record (plist-put record :aliasesAscii '["Thorn's Refuge"]))
+         (record (plist-put record :formsAscii (list :en ["Thorn's Refuge"])))
          (index (heroiclands-goto-test--index record)))
     (dolist (query '("aegir" "ÆGIR" "thorn" "ÞORN"))
       (heroiclands-goto-test--closing (format "[[%s]]" query) index
@@ -237,6 +240,18 @@
     (heroiclands-goto-test--closing "[[Thorn's Refuge]]" index
       (heroiclands-goto--close-link)
       (should (equal (buffer-string) "[[lore-isle|Þorn's Refuge]]")))))
+
+(ert-deftest heroiclands-goto-matches-every-language-list ()
+  (let* ((record (heroiclands-goto-test--record
+                  "a-none-lore-city" "lore-city" "Old Harbour"
+                  '(:en ["Port Reach"] :vy ["Vethrun"] :sort "Harbour")))
+         (record (plist-put record :formsAscii (list :vy ["Vethrun"])))
+         (index (heroiclands-goto-test--index record)))
+    (should (equal '("Port Reach" "Vethrun")
+                   (heroiclands-goto--name-forms (plist-get record :name))))
+    (dolist (query '("Vethrun" "vethr"))
+      (should (= 1 (length (heroiclands-goto--name-matches query index)))))
+    (should-not (heroiclands-goto--name-matches "Harbour Sort" index))))
 
 (ert-deftest heroiclands-goto-direct-canonical-address-survives-slug-collision ()
   (let* ((foreign (heroiclands-goto-test--record

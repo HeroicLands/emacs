@@ -279,7 +279,7 @@ See Info node `(heroiclands)Following a Link'."
 
 (defun heroiclands-goto--search-key (text)
   "Fold TEXT's case and combining accents while retaining word separators.
-The index's ASCII name and alias fields supply its other transliterations."
+The index's ASCII name and name-form fields supply its other transliterations."
   (downcase
    (string-trim
     (replace-regexp-in-string
@@ -372,22 +372,46 @@ unterminated wikilink to test for.")
 With this on, `[[Aurochs]]' becomes `[[being-aurochs|Aurochs]]' the moment it
 is closed or its paired closing brackets receive a server completion.  A link
 naming several notes offers a choice; an unknown name raises an error.
-Partial names and aliases are tried after exact matches.  Set this to nil
-to type links without that check."
+Partial names and alternate names are tried after exact matches.  Set this
+to nil to type links without that check."
   :type 'boolean :group 'heroiclands-goto)
+
+(defun heroiclands-goto--name-forms (name)
+  "Every form in every language list of NAME, an indexed `name' plist.
+The single-string keys `full', `sort', `given' and `clan' are not lists of
+forms and are skipped."
+  (let (forms)
+    (while name
+      (let ((key (car name)) (value (cadr name)))
+        (unless (memq key '(:full :sort :given :clan))
+          (when (or (vectorp value) (listp value))
+            (dolist (form (append value nil))
+              (when (stringp form) (push form forms))))))
+      (setq name (cddr name)))
+    (nreverse forms)))
+
+(defun heroiclands-goto--ascii-forms (forms-ascii)
+  "Every ASCII form in FORMS-ASCII, a plist from language code to forms."
+  (let (forms)
+    (while forms-ascii
+      (dolist (form (append (cadr forms-ascii) nil))
+        (when (stringp form) (push form forms)))
+      (setq forms-ascii (cddr forms-ascii)))
+    (nreverse forms)))
 
 (defun heroiclands-goto--name-matches (text index)
   "Notes TEXT names, as a list of (RECORD . DISPLAY).
 
 DISPLAY is the authored text that matched — the note's `name.full', or the
-alias itself when TEXT named one.  An author who wrote a sobriquet meant that
-sobriquet, so normalization keeps their wording rather than replacing it with
-the canonical name.
+alternate name itself when TEXT named one.  An author who wrote a sobriquet
+meant that sobriquet, so normalization keeps their wording rather than
+replacing it with the canonical name.
 
 Exact comparisons fold case, accents and punctuation, and also check the
-indexed ASCII name and aliases.
-If no exact name or alias matches, try case- and accent-folded substrings
-of names and aliases, including their indexed ASCII forms.  Partial
+indexed ASCII name and forms.
+If no exact name or alternate name matches, try case- and accent-folded
+substrings of names and alternate names, including their indexed ASCII
+forms.  Partial
 matches display the full name, as server completion does."
   (let ((want (heroiclands-goto--fold text))
         (needle (heroiclands-goto--search-key text))
@@ -401,16 +425,16 @@ matches display the full name, as server completion does."
            (push address seen)
            (let* ((full (plist-get (plist-get record :name) :full))
                   (ascii (plist-get record :nameAscii))
-                  ;; Authored aliases and their ASCII forms are matched
+                  ;; Authored forms and their ASCII forms are matched
                   ;; together; the authored one is what gets displayed.
-                  (authored (append (plist-get (plist-get record :name) :aliases) nil))
-                  (folded (append (plist-get record :aliasesAscii) nil))
+                  (authored (heroiclands-goto--name-forms (plist-get record :name)))
+                  (folded (heroiclands-goto--ascii-forms (plist-get record :formsAscii)))
                   (match nil))
              (when (or (and (stringp full) (equal (heroiclands-goto--fold full) want))
                        (and (stringp ascii) (equal (heroiclands-goto--fold ascii) want)))
                (setq match full))
              (unless match
-               ;; An ASCII alias stands in for the authored one at the same
+               ;; An ASCII form stands in for the authored one at the same
                ;; index; where they have drifted, the authored text still wins
                ;; because it is what the author would want to read.
                (let ((all (append authored folded)))
@@ -565,7 +589,7 @@ See Info node `(heroiclands)Normalization'."
 		   (anchor (and hash (substring raw (1+ hash))))
 		   (direct (gethash (heroiclands-goto--normalize target) table))
 		   ;; A direct address hit displays the note's own name; a name or
-		   ;; alias hit displays the words the author actually typed.
+		   ;; alternate-name hit displays the words the author actually typed.
 		   (hits (if direct
                              (list (cons direct
 					 (plist-get (plist-get direct :name) :full)))

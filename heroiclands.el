@@ -548,7 +548,7 @@ completion through Eglot and canonical rewriting when a link is closed.
 \\<heroiclands-mode-map>
 While the mode is on, in a content note:
 
-  `[['   starts a wikilink and opens server completion by name, alias,
+  `[['   starts a wikilink and opens server completion by name, alternate name,
          shortcode, or Address; `#' offers anchors.
   `]]'   closes it and rewrites it into canonical form, offering a choice
          for an ambiguous name or reporting an unknown note or missing anchor.
