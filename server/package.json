@@ -8,7 +8,7 @@
   "overrides": {
     "@heroiclands/content-language-server": {
       "@heroiclands/package-build": {
-        ".": "25.5.5",
+        ".": "25.7.1",
         "minimatch": "^11.0.3"
       }
     }
